@@ -4,7 +4,7 @@ from ultralytics import YOLO
 import cv2
 
 # Load YOLO model (only once)
-model = YOLO("yolov8n.pt")
+model = YOLO("yolov8n.pt", task="detect")
 def detect_objects_from_img(img):
     results = model(img)
 
