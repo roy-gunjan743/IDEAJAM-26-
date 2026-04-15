@@ -37,4 +37,15 @@ def calculate_best_regions(img, detections):
     # Return top 2 regions
     top_boxes = [box for _, box in scored_boxes[:2]]
 
+    if len(top_boxes) == 0:
+        h, w, _ = img.shape
+        # fallback: center region
+        fallback_box = (
+            int(w * 0.4),
+            int(h * 0.4),
+            int(w * 0.6),
+            int(h * 0.6)
+        )
+        return [fallback_box]
+
     return top_boxes

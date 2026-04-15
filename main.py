@@ -7,6 +7,7 @@ from phase2_scoring import calculate_best_regions
 from phase3_encoding import generate_watermark_signal
 from phase4_embedding import embed_watermark
 from phase5_detection import extract_watermark
+from attack_simulator import crop, compress, blur
 # -----------------------------
 # STEP 1: Load image + detect
 # -----------------------------
@@ -32,8 +33,8 @@ cv2.destroyAllWindows()
 # -----------------------------
 # STEP 3: Generate watermark
 # -----------------------------
-watermark_text = "GunjanRoyAI"
-signal = generate_watermark_signal(watermark_text)
+secret_key = "my_secret_key_123"
+signal = generate_watermark_signal(secret_key)
 
 print("\nWatermark Signal Ready!")
 print("Length:", len(signal))
@@ -58,7 +59,14 @@ cv2.destroyAllWindows()
 test_img = cv2.imread("watermarked.jpg")
 
 # Extract from first region (or combine later)
-extracted_signal = extract_watermark(test_img, top_boxes[0], len(signal))
+all_extracted = []
+
+for box in top_boxes:
+    ext = extract_watermark(test_img, box, len(signal))
+    all_extracted.append(ext)
+
+# Average signals
+extracted_signal = np.mean(all_extracted, axis=0)
 
 # Compare original vs extracted
 def calculate_similarity(original, extracted):
@@ -69,7 +77,10 @@ similarity = calculate_similarity(signal, extracted_signal)
 print("\nDetection Result:")
 print("Correlation:", similarity)
 
-if similarity > 0.5:
+if similarity > 0.2:
     print("✅ Watermark DETECTED")
 else:
     print("❌ Not detected")
+
+test_img = crop(watermarked_img)
+# or compress / blur

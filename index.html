@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DeepMark — Semantic Watermarking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050a12;
+    --bg2: #0c1421;
+    --bg3: #111c2e;
+    --surface: #162033;
+    --surface2: #1e2d44;
+    --border: rgba(99, 179, 237, 0.15);
+    --border2: rgba(99, 179, 237, 0.30);
+    --accent: #3de0ff;
+    --accent2: #00b4d8;
+    --accent3: #7c3aed;
+    --green: #22d3a5;
+    --red: #ff4d6a;
+    --amber: #fbbf24;
+    --text: #e8f4ff;
+    --text2: #7ba8cc;
+    --text3: #4a7a9b;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --glow: 0 0 20px rgba(61, 224, 255, 0.12);
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(61,224,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(61,224,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 4px 10px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  /* ── Main layout ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2.5rem 2.5rem 4rem;
+  }
+
+  /* ── Hero section ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    margin-bottom: 0.8rem;
+  }
+
+  .hero h1 span { color: var(--accent); }
+
+  .hero p {
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--text2);
+    max-width: 520px;
+    margin: 0 auto 1.5rem;
+    line-height: 1.7;
+  }
+
+  /* ── Mode toggle ── */
+  .mode-toggle {
+    display: inline-flex;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .mode-btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 8px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    color: var(--text2);
+    background: transparent;
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active {
+    background: var(--accent2);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .mode-btn:hover:not(.active) { color: var(--accent); }
+
+  /* ── App grid ── */
+  .app-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .app-grid { grid-template-columns: 1fr; }
+    main { padding: 1.5rem; }
+  }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── Upload area ── */
+  .upload-area {
+    margin: 1.25rem;
+    border: 1.5px dashed var(--border2);
+    border-radius: 8px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--accent);
+    background: rgba(61,224,255,0.04);
+  }
+
+  .upload-area.has-image {
+    padding: 0;
+    border-color: var(--border);
+    cursor: default;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 1rem;
+    border: 1.5px solid var(--border2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .upload-text {
+    font-size: 0.9rem;
+    color: var(--text2);
+    margin-bottom: 0.4rem;
+  }
+
+  .upload-subtext {
+    font-size: 0.75rem;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .upload-area input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Image display ── */
+  .image-display {
+    position: relative;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+
+  .image-display img {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 420px;
+    object-fit: contain;
+    background: var(--bg3);
+  }
+
+  .image-label {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(5,10,18,0.85);
+    color: var(--text3);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Before/after comparison ── */
+  .comparison-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .comparison-item { position: relative; }
+
+  .comparison-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: var(--bg3);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Controls sidebar ── */
+  .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+  .control-group { padding: 1.25rem; }
+
+  .control-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .input-field {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-field:focus { border-color: var(--accent2); }
+  .input-field::placeholder { color: var(--text3); }
+
+  .strength-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .strength-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .strength-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+  }
+
+  .strength-val {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* ── Attack toggles ── */
+  .attack-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .attack-chip {
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: 5px;
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    color: var(--text3);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+
+  .attack-chip.active {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: rgba(251,191,36,0.06);
+  }
+
+  .attack-chip:hover:not(.active) {
+    border-color: var(--border2);
+    color: var(--text2);
+  }
+
+  /* ── Action buttons ── */
+  .btn-group { display: flex; flex-direction: column; gap: 8px; padding: 0 1.25rem 1.25rem; }
+
+  .btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent2);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(61,224,255,0.2);
+  }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--border2);
+    color: var(--text);
+  }
+
+  .btn-detect {
+    background: var(--accent3);
+    color: white;
+  }
+
+  .btn-detect:hover:not(:disabled) {
+    filter: brightness(1.2);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+  }
+
+  .btn-download {
+    background: transparent;
+    color: var(--green);
+    border: 1px solid rgba(34,211,165,0.3);
+  }
+
+  .btn-download:hover:not(:disabled) {
+    background: rgba(34,211,165,0.08);
+    border-color: var(--green);
+  }
+
+  /* ── Results panel ── */
+  .result-card {
+    margin: 0 1.25rem 1.25rem;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+  }
+
+  .result-detected {
+    border-color: rgba(34,211,165,0.4);
+    background: rgba(34,211,165,0.06);
+  }
+
+  .result-not-detected {
+    border-color: rgba(255,77,106,0.4);
+    background: rgba(255,77,106,0.06);
+  }
+
+  .result-title {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .result-detected .result-title { color: var(--green); }
+  .result-not-detected .result-title { color: var(--red); }
+
+  .result-icon { font-size: 16px; }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .metric {
+    background: rgba(255,255,255,0.03);
+    border-radius: 5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+  }
+
+  .metric-name {
+    font-size: 0.65rem;
+    color: var(--text3);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .metric-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    color: var(--text);
+  }
+
+  /* ── Confidence bar ── */
+  .conf-bar-wrap {
+    margin-top: 10px;
+  }
+
+  .conf-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text3);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .conf-bar-track {
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .conf-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .conf-bar-fill.high { background: var(--green); }
+  .conf-bar-fill.medium { background: var(--amber); }
+  .conf-bar-fill.low { background: var(--red); }
+
+  /* ── Loader ── */
+  .loader-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5,10,18,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-text {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    text-transform: uppercase;
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Region info ── */
+  .region-list { margin: 0 1.25rem 1.25rem; }
+  .region-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+
+  .region-item:last-child { border-bottom: none; }
+  .region-name { color: var(--text2); font-family: var(--mono); font-size: 0.7rem; }
+
+  .region-score {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+    background: rgba(61,224,255,0.08);
+    border: 1px solid rgba(61,224,255,0.2);
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+
+  /* ── Toast ── */
+  .toast-container {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    max-width: 320px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .toast.success { border-color: rgba(34,211,165,0.4); }
+  .toast.error { border-color: rgba(255,77,106,0.4); color: var(--red); }
+
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* ── Separator ── */
+  hr { border: none; border-top: 1px solid var(--border); }
+
+  /* ── Pipeline status ── */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    margin: 0 1.25rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .pipeline-step {
+    flex: 1;
+    padding: 6px 4px;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-right: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .pipeline-step:last-child { border-right: none; }
+  .pipeline-step.active { background: rgba(61,224,255,0.08); color: var(--accent); }
+  .pipeline-step.done { color: var(--green); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">DM</div>
+    DeepMark
+  </div>
+  <div class="badge">v1.0 — Semantic Watermarking</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Semantic-Aware <span>Watermarking</span><br>for AI-Generated Images</h1>
+    <p>Multi-region DCT embedding with key-based encoding. Resilient to JPEG, blur, crop, and screenshot attacks.</p>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-embed-mode" onclick="setMode('embed')">⬡ Embed</button>
+      <button class="mode-btn" id="btn-detect-mode" onclick="setMode('detect')">◈ Detect</button>
+    </div>
+  </div>
+
+  <div class="app-grid">
+    <!-- Main canvas area -->
+    <div>
+      <!-- Upload / Image Panel -->
+      <div class="panel" style="margin-bottom: 1rem; position: relative;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="dot"></span>
+            <span id="main-panel-title">Input Image</span>
+          </div>
+          <span style="font-family: var(--mono); font-size: 0.65rem; color: var(--text3);" id="img-info"></span>
+        </div>
+
+        <div id="upload-zone" class="upload-area" onclick="triggerUpload()" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+          <input type="file" id="file-input" accept="image/*" onchange="onFileSelect(event)" onclick="event.stopPropagation()" />
+          <div class="upload-icon">📁</div>
+          <p class="upload-text">Drag & drop an image, or click to browse</p>
+          <p class="upload-subtext">JPEG, PNG, WEBP — up to 10MB</p>
+        </div>
+
+        <!-- Loader overlay -->
+        <div class="loader-overlay" id="loader" style="display: none;">
+          <div class="spinner"></div>
+          <div class="loader-text" id="loader-text">Processing...</div>
+        </div>
+      </div>
+
+      <!-- Before / After comparison -->
+      <div class="panel" id="comparison-panel" style="display: none;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Before / After Comparison</span>
+          </div>
+          <span style="font-family: var(--mono); font-size: 0.65rem; color: var(--text3);" id="attack-label"></span>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-item">
+            <img id="before-img" src="" alt="Original" />
+            <div class="image-label">Original</div>
+          </div>
+          <div class="comparison-item">
+            <img id="after-img" src="" alt="Processed" />
+            <div class="image-label" id="after-label">Watermarked</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Annotated regions panel -->
+      <div class="panel" id="annotated-panel" style="display: none;">
+        <div class="panel-header">
+          <div class="panel-title"><span>Detected Semantic Regions</span></div>
+        </div>
+        <div style="padding: 1rem;">
+          <div class="image-display">
+            <img id="annotated-img" src="" alt="Annotated" style="max-height: 320px;" />
+            <div class="image-label">Bounding Boxes — Selected Regions</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar controls -->
+    <div class="sidebar">
+
+      <!-- Config panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span>Configuration</span></div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label">🔑 Secret Key</div>
+          <input type="text" class="input-field" id="secret-key" placeholder="Enter your secret key" value="deepmark-demo-key" />
+        </div>
+
+        <hr />
+
+        <div class="control-group">
+          <div class="control-label">⚡ Embedding Strength (α)</div>
+          <div class="strength-row">
+            <input type="range" class="strength-slider" id="strength-slider" min="4" max="16" value="8" step="1" oninput="document.getElementById('strength-val').textContent=this.value" />
+            <span class="strength-val" id="strength-val">8</span>
+          </div>
+          <p style="font-family:var(--mono);font-size:0.6rem;color:var(--text3);margin-top:6px;">Low = imperceptible &nbsp;|&nbsp; High = robust</p>
+        </div>
+
+        <hr />
+
+        <!-- Attack simulation (only shows in detect mode) -->
+        <div class="control-group" id="attack-controls">
+          <div class="control-label">🛡 Attack Simulation</div>
+          <div class="attack-grid">
+            <button class="attack-chip" id="atk-none" onclick="setAttack('none')">None</button>
+            <button class="attack-chip" id="atk-jpeg" onclick="setAttack('jpeg')">JPEG</button>
+            <button class="attack-chip" id="atk-blur" onclick="setAttack('blur')">Blur</button>
+            <button class="attack-chip" id="atk-crop" onclick="setAttack('crop')">Crop</button>
+            <button class="attack-chip" id="atk-screenshot" onclick="setAttack('screenshot')">Screenshot</button>
+            <button class="attack-chip" id="atk-noise" onclick="setAttack('noise')">Noise</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span>Actions</span></div>
+        </div>
+        <div class="btn-group" style="margin-top: 0.75rem;">
+          <button class="btn btn-secondary" onclick="triggerUpload()">📂 Upload Image</button>
+          <button class="btn btn-primary" id="btn-embed" onclick="doEmbed()" style="display:flex;">⬡ Embed Watermark</button>
+          <button class="btn btn-detect" id="btn-detect" onclick="doDetect()" style="display:none;">◈ Detect Watermark</button>
+          <button class="btn btn-download" id="btn-download" onclick="downloadResult()" style="display:none;">↓ Download Result</button>
+        </div>
+      </div>
+
+      <!-- Pipeline indicator -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span>Processing Pipeline</span></div>
+        </div>
+        <div class="pipeline" style="margin-top: 0.75rem;">
+          <div class="pipeline-step" id="pipe-1">Detect</div>
+          <div class="pipeline-step" id="pipe-2">Score</div>
+          <div class="pipeline-step" id="pipe-3">Encode</div>
+          <div class="pipeline-step" id="pipe-4">Embed</div>
+          <div class="pipeline-step" id="pipe-5">Verify</div>
+        </div>
+        <div class="region-list" id="region-list" style="margin-top: 4px;"></div>
+      </div>
+
+      <!-- Detection result -->
+      <div id="detection-result" style="display:none;"></div>
+
+    </div>
+  </div>
+</main>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000';
+let state = {
+  mode: 'embed',
+  originalImageB64: null,
+  resultImageB64: null,
+  attack: 'none',
+};
+
+// ── Mode switching ────────────────────────────────────────────────────────────
+function setMode(mode) {
+  state.mode = mode;
+  document.getElementById('btn-embed-mode').classList.toggle('active', mode === 'embed');
+  document.getElementById('btn-detect-mode').classList.toggle('active', mode === 'detect');
+  document.getElementById('btn-embed').style.display = mode === 'embed' ? 'flex' : 'none';
+  document.getElementById('btn-detect').style.display = mode === 'detect' ? 'flex' : 'none';
+  document.getElementById('main-panel-title').textContent = mode === 'embed' ? 'Input Image' : 'Image to Inspect';
+  document.getElementById('attack-controls').style.opacity = mode === 'detect' ? '1' : '0.4';
+  resetResults();
+}
+
+// ── Attack selection ──────────────────────────────────────────────────────────
+function setAttack(type) {
+  state.attack = type;
+  ['none','jpeg','blur','crop','screenshot','noise'].forEach(a => {
+    document.getElementById('atk-' + a)?.classList.toggle('active', a === type);
+  });
+}
+setAttack('none');
+
+// ── Upload handling ───────────────────────────────────────────────────────────
+function triggerUpload() {
+  document.getElementById('file-input').click();
+}
+
+function onFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  document.getElementById('upload-zone').classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  onDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+  else toast('Please drop a valid image file', 'error');
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    state.originalImageB64 = ev.target.result;
+    state.resultImageB64 = null;
+    showUploadedImage(state.originalImageB64, file);
+    resetResults();
+    document.getElementById('btn-download').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function showUploadedImage(b64, file) {
+  const zone = document.getElementById('upload-zone');
+  zone.innerHTML = `<div class="image-display">
+    <img src="${b64}" alt="Uploaded" style="width:100%;max-height:420px;object-fit:contain;background:var(--bg3);border-radius:6px;" />
+    <div class="image-label" style="cursor:pointer;" onclick="triggerUpload()">Click to change</div>
+  </div>
+  <input type="file" id="file-input" accept="image/*" onchange="onFileSelect(event)" style="display:none;" />`;
+  zone.style.padding = '0';
+  zone.style.border = '1px solid var(--border)';
+  zone.style.cursor = 'default';
+
+  if (file) {
+    const kb = (file.size / 1024).toFixed(0);
+    document.getElementById('img-info').textContent = `${file.name} — ${kb}KB`;
+  }
+}
+
+// ── Pipeline visualization ────────────────────────────────────────────────────
+function activatePipe(step) {
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('pipe-' + i);
+    if (i < step) { el.className = 'pipeline-step done'; }
+    else if (i === step) { el.className = 'pipeline-step active'; }
+    else { el.className = 'pipeline-step'; }
+  }
+}
+
+function resetPipe() {
+  for (let i = 1; i <= 5; i++) document.getElementById('pipe-' + i).className = 'pipeline-step';
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+async function doEmbed() {
+  if (!state.originalImageB64) { toast('Please upload an image first', 'error'); return; }
+  const key = document.getElementById('secret-key').value.trim();
+  if (!key) { toast('Please enter a secret key', 'error'); return; }
+
+  showLoader('Phase 1: Detecting semantic regions...');
+  resetPipe();
+
+  try {
+    activatePipe(1);
+    await sleep(300);
+    activatePipe(2);
+    await sleep(200);
+    activatePipe(3);
+
+    const resp = await fetch(`${API}/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_b64: state.originalImageB64,
+        secret_key: key,
+        strength: parseFloat(document.getElementById('strength-slider').value)
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Embedding failed');
+    }
+
+    activatePipe(4);
+    const data = await resp.json();
+    activatePipe(5);
+    await sleep(200);
+
+    state.resultImageB64 = data.watermarked_image_b64;
+
+    // Show before/after
+    document.getElementById('before-img').src = state.originalImageB64;
+    document.getElementById('after-img').src = data.watermarked_image_b64;
+    document.getElementById('after-label').textContent = 'Watermarked';
+    document.getElementById('attack-label').textContent = '';
+    document.getElementById('comparison-panel').style.display = '';
+
+    // Show annotated
+    document.getElementById('annotated-img').src = data.annotated_image_b64;
+    document.getElementById('annotated-panel').style.display = '';
+
+    // Show region list
+    renderRegionList(data.regions, 'Embedded in regions:');
+
+    document.getElementById('btn-download').style.display = 'flex';
+    toast(`✓ Watermark embedded in ${data.regions_count} region(s)`, 'success');
+
+  } catch (e) {
+    toast(e.message, 'error');
+    resetPipe();
+  } finally {
+    hideLoader();
+  }
+}
+
+async function doDetect() {
+  if (!state.originalImageB64) { toast('Please upload an image first', 'error'); return; }
+  const key = document.getElementById('secret-key').value.trim();
+  if (!key) { toast('Please enter a secret key', 'error'); return; }
+
+  showLoader('Extracting watermark signal...');
+  resetPipe();
+
+  try {
+    activatePipe(1);
+    await sleep(300);
+    activatePipe(2);
+    await sleep(200);
+    activatePipe(3);
+
+    const resp = await fetch(`${API}/detect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image_b64: state.originalImageB64,
+        secret_key: key,
+        attack_simulation: state.attack === 'none' ? null : state.attack,
+        strength: parseFloat(document.getElementById('strength-slider').value)
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.detail || 'Detection failed');
+    }
+
+    activatePipe(4);
+    const data = await resp.json();
+    activatePipe(5);
+    await sleep(200);
+
+    // Show annotated
+    document.getElementById('annotated-img').src = data.annotated_image_b64;
+    document.getElementById('annotated-panel').style.display = '';
+
+    // Show detection result
+    renderDetectionResult(data);
+
+    if (data.attack_applied) {
+      document.getElementById('attack-label').textContent = `Attack: ${data.attack_applied.toUpperCase()}`;
+      document.getElementById('before-img').src = state.originalImageB64;
+      document.getElementById('after-img').src = state.originalImageB64;
+      document.getElementById('after-label').textContent = `After ${data.attack_applied} attack`;
+      document.getElementById('comparison-panel').style.display = '';
+    }
+
+    toast(data.detected ? '✓ Watermark detected!' : '✗ No watermark found', data.detected ? 'success' : 'error');
+
+  } catch (e) {
+    toast(e.message, 'error');
+    resetPipe();
+  } finally {
+    hideLoader();
+  }
+}
+
+function renderDetectionResult(data) {
+  const conf = data.confidence;
+  const pct = (conf * 100).toFixed(1);
+  const barClass = conf >= 0.7 ? 'high' : conf >= 0.4 ? 'medium' : 'low';
+  const icon = data.detected ? '✓' : '✗';
+  const cls = data.detected ? 'result-detected' : 'result-not-detected';
+
+  const html = `
+    <div class="result-card ${cls}">
+      <div class="result-title">
+        <span class="result-icon">${icon}</span>
+        ${data.detected ? 'Watermark Detected' : 'Not Detected'}
+      </div>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-name">Confidence</div>
+          <div class="metric-value">${pct}%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">Bit Accuracy</div>
+          <div class="metric-value">${(data.bit_accuracy * 100).toFixed(1)}%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">Correlation</div>
+          <div class="metric-value">${data.correlation.toFixed(3)}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-name">Regions</div>
+          <div class="metric-value">${data.regions_count}</div>
+        </div>
+      </div>
+      <div class="conf-bar-wrap">
+        <div class="conf-bar-label">
+          <span>Confidence</span>
+          <span>${pct}%</span>
+        </div>
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill ${barClass}" style="width: ${pct}%"></div>
+        </div>
+      </div>
+    </div>`;
+
+  const el = document.getElementById('detection-result');
+  el.innerHTML = html;
+  el.style.display = '';
+}
+
+function renderRegionList(regions, label) {
+  const el = document.getElementById('region-list');
+  if (!regions || !regions.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="font-family:var(--mono);font-size:0.6rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;padding:8px 0 4px;">${label}</div>` +
+    regions.map(r => `
+      <div class="region-item">
+        <span class="region-name">${r.label}</span>
+        <span class="region-score">${r.importance_score ? (r.importance_score * 100).toFixed(0) + '%' : (r.confidence * 100).toFixed(0) + '%'}</span>
+      </div>`).join('');
+}
+
+// ── Download ──────────────────────────────────────────────────────────────────
+function downloadResult() {
+  if (!state.resultImageB64) { toast('No result to download', 'error'); return; }
+  const a = document.createElement('a');
+  a.href = state.resultImageB64;
+  a.download = 'deepmark-watermarked.jpg';
+  a.click();
+  toast('↓ Download started', 'success');
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showLoader(msg) {
+  document.getElementById('loader-text').textContent = msg || 'Processing...';
+  document.getElementById('loader').style.display = 'flex';
+}
+
+function hideLoader() {
+  document.getElementById('loader').style.display = 'none';
+}
+
+function resetResults() {
+  document.getElementById('comparison-panel').style.display = 'none';
+  document.getElementById('annotated-panel').style.display = 'none';
+  document.getElementById('detection-result').style.display = 'none';
+  document.getElementById('region-list').innerHTML = '';
+  resetPipe();
+}
+
+function toast(msg, type = 'success') {
+  const c = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+setMode('embed');
+setAttack('none');
+</script>
+</body>
+</html>

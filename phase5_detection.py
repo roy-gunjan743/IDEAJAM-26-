@@ -2,6 +2,7 @@
 
 import cv2
 import numpy as np
+import random
 
 def extract_watermark(image, box, length):
     x1, y1, x2, y2 = box
@@ -21,22 +22,23 @@ def extract_watermark(image, box, length):
 
     rows, cols = dct.shape
 
-    for i in range(10, rows):
-        for j in range(10, cols):
-            if idx >= length:
-                break
+    random.seed(42)
 
-            value = dct[i][j]
+    positions = [(i, j) for i in range(10, rows) for j in range(10, cols)]
+    random.shuffle(positions)
 
-            # Detect sign
-            if value > 0:
-                extracted.append(1)
-            else:
-                extracted.append(-1)
-
-            idx += 1
-
+    for (i, j) in positions:
         if idx >= length:
             break
+
+        value = dct[i][j]
+
+        # Detect sign of coefficient as watermark bit.
+        if value > 0:
+            extracted.append(1)
+        else:
+            extracted.append(-1)
+
+        idx += 1
 
     return np.array(extracted)

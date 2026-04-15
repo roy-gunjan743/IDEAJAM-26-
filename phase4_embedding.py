@@ -2,44 +2,60 @@
 
 import cv2
 import numpy as np
+import random
 
 def embed_watermark(image, signal, box):
     x1, y1, x2, y2 = box
 
-    # Convert to grayscale
+    # Convert to grayscale (for processing only)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Extract important region
+    # Extract region
     region = gray[y1:y2, x1:x2]
-
-    # Convert to float32
     region = np.float32(region)
 
     # Apply DCT
     dct = cv2.dct(region)
 
-    # Embed watermark signal
+    # -----------------------------
+    # EMBEDDING (SAFE + INVISIBLE)
+    # -----------------------------
     idx = 0
     rows, cols = dct.shape
 
-    for i in range(10, rows):
-        for j in range(10, cols):
-            if idx >= len(signal):
-                break
+    random.seed(42)
 
-            # Modify frequency slightly
-            strength = 2 + abs(dct[i][j]) * 0.01
-            dct[i][j] += signal[idx] * strength
-            idx += 1
+    # Smaller mid-frequency area (balanced)
+    positions = [(i, j) for i in range(6, 12) for j in range(6, 12)]
+    random.shuffle(positions)
 
-        if idx >= len(signal):
+    for (i, j) in positions:
+        if idx >= len(signal) // 4:   # limit embedding → avoid distortion
             break
 
-    # Convert back using IDCT
+        # Very low strength (invisible)
+        strength = 1.0 + abs(dct[i][j]) * 0.003
+        dct[i][j] += signal[idx] * strength
+
+        idx += 1
+
+    # -----------------------------
+    # RECONSTRUCT
+    # -----------------------------
     idct = cv2.idct(dct)
+    idct = np.clip(idct, 0, 255)
 
-    # Replace region
-    watermarked = gray.copy()
-    watermarked[y1:y2, x1:x2] = idct
+    # -----------------------------
+    # APPLY BACK TO COLOR IMAGE
+    # -----------------------------
+    watermarked = image.copy()
 
-    return watermarked
+    alpha = 0.97  # strong blending → preserves original look
+
+    for c in range(3):  # apply to all RGB channels
+        watermarked[y1:y2, x1:x2, c] = (
+            alpha * image[y1:y2, x1:x2, c] +
+            (1 - alpha) * idct
+        )
+
+    return watermarked.astype(np.uint8)
